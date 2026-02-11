@@ -1,59 +1,31 @@
-name: CI/CD - Ansible Deploy
+deploy:
+  needs: test
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
 
-on:
-  push:
-    branches:
-      - main
+    - name: Prepare SSH
+      run: |
+        mkdir -p $GITHUB_WORKSPACE/ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > $GITHUB_WORKSPACE/ssh/id_rsa
+        chmod 600 $GITHUB_WORKSPACE/ssh/id_rsa
+        ssh-keyscan -H "${{ secrets.REMOTE_HOST }}" >> $GITHUB_WORKSPACE/ssh/known_hosts
+      shell: bash
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    - name: Install Ansible
+      run: |
+        sudo apt update
+        sudo apt install -y ansible
+      shell: bash
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - name: Install deps & run tests
-        run: |
-          cd app
-          npm install
-          npm test
-
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Prepare SSH
-        run: |
-          mkdir -p ~/.ssh
-          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ] || [ -z "${{ secrets.REMOTE_HOST }}" ] || [ -z "${{ secrets.REMOTE_USER }}" ]; then
-            echo "ERROR: Secrets SSH_PRIVATE_KEY, REMOTE_HOST o REMOTE_USER no definidos"
-            exit 1
-          fi
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ secrets.REMOTE_HOST }}" >> ~/.ssh/known_hosts
-        shell: bash
-
-      - name: Install Ansible
-        run: |
-          sudo apt update
-          sudo apt install -y ansible
-        shell: bash
-
-      - name: Run Ansible Playbook
-        env:
-          GIT_REF: ${{ github.ref_name }}
-          ANSIBLE_HOST_KEY_CHECKING: "False"
-        run: |
-          cd ansible
-          ansible-playbook playbooks/deploy.yml \
-            -i inventories/production.yml \
-            -u ${{ secrets.REMOTE_USER }} \
-            --private-key ~/.ssh/id_rsa
-        shell: bash
+    - name: Run Ansible Playbook
+      env:
+        GIT_REF: ${{ github.ref_name }}
+        ANSIBLE_HOST_KEY_CHECKING: "False"
+      run: |
+        cd ansible
+        ansible-playbook playbooks/deploy.yml \
+          -i inventories/production.yml \
+          -u ${{ secrets.REMOTE_USER }} \
+          --private-key $GITHUB_WORKSPACE/ssh/id_rsa
+      shell: bash
