@@ -31,14 +31,20 @@ jobs:
       - name: Prepare SSH
         run: |
           mkdir -p ~/.ssh
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ] || [ -z "${{ secrets.REMOTE_HOST }}" ] || [ -z "${{ secrets.REMOTE_USER }}" ]; then
+            echo "ERROR: Secrets SSH_PRIVATE_KEY, REMOTE_HOST o REMOTE_USER no definidos"
+            exit 1
+          fi
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.REMOTE_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H "${{ secrets.REMOTE_HOST }}" >> ~/.ssh/known_hosts
+        shell: bash
 
       - name: Install Ansible
         run: |
           sudo apt update
           sudo apt install -y ansible
+        shell: bash
 
       - name: Run Ansible Playbook
         env:
@@ -46,4 +52,8 @@ jobs:
           ANSIBLE_HOST_KEY_CHECKING: "False"
         run: |
           cd ansible
-          ansible-playbook playbooks/deploy.yml -i inventories/production.yml --private-key ~/.ssh/id_rsa
+          ansible-playbook playbooks/deploy.yml \
+            -i inventories/production.yml \
+            -u ${{ secrets.REMOTE_USER }} \
+            --private-key ~/.ssh/id_rsa
+        shell: bash
