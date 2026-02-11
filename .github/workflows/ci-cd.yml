@@ -44,7 +44,7 @@ jobs:
 
       - name: Prepare SSH
         run: |
-          SSH_DIR="$GITHUB_WORKSPACE/ssh"
+          SSH_DIR="$RUNNER_TEMP/ssh"
           mkdir -p "$SSH_DIR"
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > "$SSH_DIR/id_rsa"
           chmod 600 "$SSH_DIR/id_rsa"
@@ -66,5 +66,5 @@ jobs:
           ansible-playbook playbooks/deploy.yml \
             -i inventories/production.yml \
             -u ${{ secrets.REMOTE_USER }} \
-            --private-key $GITHUB_WORKSPACE/ssh/id_rsa
-        shell: bash
+          --private-key $RUNNER_TEMP/ssh/id_rsa
+
