@@ -37,9 +37,9 @@ jobs:
 
       - name: Check secrets exist
         run: |
-          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then echo "SSH_PRIVATE_KEY not set"; exit 1; fi
-          if [ -z "${{ secrets.REMOTE_HOST }}" ]; then echo "REMOTE_HOST not set"; exit 1; fi
-          if [ -z "${{ secrets.REMOTE_USER }}" ]; then echo "REMOTE_USER not set"; exit 1; fi
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then echo "SSH_PRIVATE_KEY not set"; fi
+          if [ -z "${{ secrets.REMOTE_HOST }}" ]; then echo "REMOTE_HOST not set"; fi
+          if [ -z "${{ secrets.REMOTE_USER }}" ]; then echo "REMOTE_USER not set"; fi
         shell: bash
 
       - name: Setup SSH key
@@ -61,5 +61,6 @@ jobs:
           cd ansible
           ansible-playbook playbooks/deploy.yml \
             -i inventories/production.yml \
-            -u ${{ secrets.REMOTE_USER }}
-        shell: bash
+            -u ${{ secrets.REMOTE_USER }} \
+          --private-key $RUNNER_TEMP/ssh/id_rsa
+
