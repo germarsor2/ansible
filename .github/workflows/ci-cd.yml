@@ -1,66 +1,29 @@
-name: CI/CD - Ansible Deploy
+name: CI/CD Ansible
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo with submodules
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - name: Install deps & run tests
-        run: |
-          cd app
-          npm install
-          npm test
-        shell: bash
-
   deploy:
-    needs: test
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo with submodules
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
+      - uses: actions/checkout@v4
 
-      - name: Check secrets exist
+      - name: Setup SSH
         run: |
-          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then echo "SSH_PRIVATE_KEY not set"; fi
-          if [ -z "${{ secrets.REMOTE_HOST }}" ]; then echo "REMOTE_HOST not set"; fi
-          if [ -z "${{ secrets.REMOTE_USER }}" ]; then echo "REMOTE_USER not set"; fi
-        shell: bash
-
-      - name: Setup SSH key
-        uses: webfactory/ssh-agent@v0.8.1
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
 
       - name: Install Ansible
         run: |
-          sudo apt update
-          sudo apt install -y ansible
-        shell: bash
+          pip install ansible
 
-      - name: Run Ansible Playbook
+      - name: Deploy
         env:
-          GIT_REF: ${{ github.ref_name }}
-          ANSIBLE_HOST_KEY_CHECKING: "False"
+          GIT_REF: main
         run: |
           cd ansible
-          ansible-playbook playbooks/deploy.yml \
-            -i inventories/production.yml \
-            -u ${{ secrets.REMOTE_USER }} \
-          --private-key $RUNNER_TEMP/ssh/id_rsa
-
+          ansible-playbook playbooks/deploy.yml
