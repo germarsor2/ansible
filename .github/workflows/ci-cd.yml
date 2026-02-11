@@ -35,14 +35,17 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Check secrets exist
+        run: |
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then echo "SSH_PRIVATE_KEY not set"; fi
+          if [ -z "${{ secrets.REMOTE_HOST }}" ]; then echo "REMOTE_HOST not set"; fi
+          if [ -z "${{ secrets.REMOTE_USER }}" ]; then echo "REMOTE_USER not set"; fi
+        shell: bash
+
       - name: Prepare SSH
         run: |
           SSH_DIR="$GITHUB_WORKSPACE/ssh"
           mkdir -p "$SSH_DIR"
-          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ] || [ -z "${{ secrets.REMOTE_HOST }}" ] || [ -z "${{ secrets.REMOTE_USER }}" ]; then
-            echo "ERROR: Secrets SSH_PRIVATE_KEY, REMOTE_HOST or REMOTE_USER not defined"
-            exit 1
-          fi
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > "$SSH_DIR/id_rsa"
           chmod 600 "$SSH_DIR/id_rsa"
           ssh-keyscan -H "${{ secrets.REMOTE_HOST }}" >> "$SSH_DIR/known_hosts"
