@@ -9,7 +9,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -21,23 +24,28 @@ jobs:
           cd app
           npm install
           npm test
+        shell: bash
 
   deploy:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Prepare SSH
         run: |
-          mkdir -p ~/.ssh
+          SSH_DIR="$GITHUB_WORKSPACE/ssh"
+          mkdir -p "$SSH_DIR"
           if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ] || [ -z "${{ secrets.REMOTE_HOST }}" ] || [ -z "${{ secrets.REMOTE_USER }}" ]; then
-            echo "ERROR: Secrets SSH_PRIVATE_KEY, REMOTE_HOST o REMOTE_USER no definidos"
+            echo "ERROR: Secrets SSH_PRIVATE_KEY, REMOTE_HOST or REMOTE_USER not defined"
             exit 1
           fi
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ secrets.REMOTE_HOST }}" >> ~/.ssh/known_hosts
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > "$SSH_DIR/id_rsa"
+          chmod 600 "$SSH_DIR/id_rsa"
+          ssh-keyscan -H "${{ secrets.REMOTE_HOST }}" >> "$SSH_DIR/known_hosts"
         shell: bash
 
       - name: Install Ansible
@@ -55,5 +63,5 @@ jobs:
           ansible-playbook playbooks/deploy.yml \
             -i inventories/production.yml \
             -u ${{ secrets.REMOTE_USER }} \
-            --private-key ~/.ssh/id_rsa
+            --private-key $GITHUB_WORKSPACE/ssh/id_rsa
         shell: bash
